@@ -1,0 +1,49 @@
+name: Terraform GPO Deployment with Report
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  terraform:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Initialize Terraform
+        run: terraform init
+
+      - name: Apply Terraform Changes
+        run: terraform apply -auto-approve
+
+      - name: Install GPOZaurr
+        shell: pwsh
+        run: Install-Module -Name GPOZaurr -Force -Scope CurrentUser
+
+      - name: Generate CIS GPO Report
+        shell: pwsh
+        run: |
+          Import-Module GPOZaurr
+          Get-GPOZaurrReport -Path GPOAuditReport.html
+
+      - name: Commit and Push Report
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git add GPOAuditReport.html
+          # Commit only if there are changes
+          if ((git status --porcelain) -ne "") {
+            git commit -m "Add GPO audit report"
+            git push
+          } else {
+            Write-Host "No changes to commit"
+          }
