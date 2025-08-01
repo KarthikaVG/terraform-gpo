@@ -22,16 +22,23 @@ jobs:
       - name: Apply Terraform Changes
         run: terraform apply -auto-approve
 
-      - name: Generate GPO Report using GPOZaurr
+      - name: Install GPOZaurr
+        shell: pwsh
+        run: |
+          Install-Module -Name GPOZaurr -Force -Scope CurrentUser
+
+      - name: Generate GPO Audit Report
+        shell: pwsh
         run: |
           Import-Module GPOZaurr
-          Show-GPOZaurr | Out-File GPOAuditReport.html -Encoding utf8
+          Invoke-GPOZaurr -Path "$PWD\GPOAuditReport.html"
 
       - name: Push Report to GitHub
+        shell: pwsh
         run: |
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
-          git remote set-url origin https://x-access-token:${{ secrets.Token }}@github.com/KarthikaVG/terraform-gpo.git
+          git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/KarthikaVG/terraform-gpo.git
           git add GPOAuditReport.html
-          git commit -m "Add updated GPO audit report"
+          git commit -m "Add GPO audit report"
           git push
