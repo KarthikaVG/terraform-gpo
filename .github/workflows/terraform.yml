@@ -8,6 +8,7 @@ on:
 jobs:
   terraform:
     runs-on: self-hosted
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -21,23 +22,17 @@ jobs:
       - name: Apply Terraform Changes
         run: terraform apply -auto-approve
 
-      - name: Install GPOZaurr
-        shell: powershell
-        run: Install-Module -Name GPOZaurr -Force -Scope CurrentUser
-
-      - name: Generate CIS GPO Report
-        shell: powershell
+      - name: Generate GPO Report using GPOZaurr
         run: |
           Import-Module GPOZaurr
-          Get-GPOZaurrReport -Path GPOAuditReport.html
+          Show-GPOZaurr | Out-File GPOAuditReport.html -Encoding utf8
 
       - name: Push Report to GitHub
-        shell: powershell
         run: |
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
           git add GPOAuditReport.html
-          git commit -m "Add GPO audit report"
+          git commit -m "Add updated GPO audit report"
           git push
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
