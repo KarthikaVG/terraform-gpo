@@ -22,19 +22,12 @@ jobs:
       - name: Apply Terraform Changes
         run: terraform apply -auto-approve
 
-      - name: Install GPOZaurr
-        shell: pwsh
-        run: |
-          Install-Module -Name GPOZaurr -Force -Scope CurrentUser
-
-      - name: Generate GPO Audit Report
-        shell: pwsh
+      - name: Generate GPO Report using GPOZaurr
         run: |
           Import-Module GPOZaurr
-          Invoke-GPOZaurr -Path "$PWD\GPOAuditReport.html"
+          Show-GPOZaurr | Out-File GPOAuditReport.html -Encoding utf8
 
       - name: Push Report to GitHub
-        shell: pwsh
         run: |
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
