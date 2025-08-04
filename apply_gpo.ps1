@@ -1,6 +1,6 @@
 # Apply CIS Benchmark GPO settings
 
-$GPOName = "CIS Benchmark - Password Policy"
+$GPOName = "CIS Benchmark - Password Policy-new"
 
 # Import the GroupPolicy module
 Import-Module GroupPolicy
