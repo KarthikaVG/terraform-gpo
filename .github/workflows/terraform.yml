@@ -28,11 +28,26 @@ jobs:
           Import-Module GPOZaurr
           Show-GPOZaurr | Out-File GPOAuditReport.html -Encoding utf8
 
-      - name: List files in repo to verify report exists
+      - name: List files after generating report
         shell: powershell
         run: |
-          Get-ChildItem -Path . -Recurse | Where-Object { $_.Name -eq 'GPOAuditReport.html' }
-          Get-Content -Path .\GPOAuditReport.html -TotalCount 10
+          Write-Output "Listing GPOAuditReport.html files in repo:"
+          Get-ChildItem -Path . -Filter "GPOAuditReport.html" -Recurse
+
+      - name: Check .gitignore content
+        shell: powershell
+        run: |
+          Write-Output "Contents of .gitignore:"
+          if (Test-Path .gitignore) {
+            Get-Content .gitignore
+          } else {
+            Write-Output "No .gitignore file found"
+          }
+
+      - name: Check git status before commit
+        shell: powershell
+        run: |
+          git status
 
       - name: Push GPO Report to GitHub
         shell: powershell
