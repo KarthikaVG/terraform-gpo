@@ -4,7 +4,7 @@ Start-Transcript -Path "$PSScriptRoot\script_output.txt" -Append
 Write-Host "Starting GPO script..."
 Write-Host "Running as: $(whoami)"
 
-# Check if user is Administrator
+# To check if user is Administrator
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
 if (-not $isAdmin) {
@@ -30,13 +30,15 @@ try {
         Write-Host "GPO already exists: $GPOName"
     }
 
-    # Set password policy settings
-    Write-Host "Setting password policies..."
-    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName "MaximumPasswordAge" -Type Dword -Value 30
-    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName "MinimumPasswordLength" -Type Dword -Value 14
-    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName "PasswordComplexity" -Type Dword -Value 1
+    # Apply password policy using INF template via secedit
+    Write-Host "Applying CIS-compliant password policies using secedit..."
 
-    Write-Host "Password policy settings applied."
+    $infPath = "$PSScriptRoot\password_policy.inf"
+    $dbPath = "$PSScriptRoot\secedit.sdb"
+
+    secedit /configure /db $dbPath /cfg $infPath /quiet
+
+    Write-Host "Password policy applied using security template."
 
     # Force update group policy
     gpupdate /force | Out-Null
@@ -49,5 +51,4 @@ try {
 }
 
 Write-Host "CIS Benchmark GPO applied successfully."
-
 Stop-Transcript
