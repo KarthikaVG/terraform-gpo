@@ -4,7 +4,7 @@ Start-Transcript -Path "$PSScriptRoot\script_output.txt" -Append
 Write-Host "Starting GPO script..."
 Write-Host "Running as: $(whoami)"
 
-# Check for Administrator
+# Check admin
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
     Write-Error "This script must be run as Administrator."
@@ -14,11 +14,12 @@ if (-not $isAdmin) {
 
 try {
     Import-Module GroupPolicy -ErrorAction Stop
+    Import-Module ActiveDirectory -ErrorAction Stop
 
     $GPOName = "CIS Benchmark - Password Policy-latest"
     $domainDN = (Get-ADDomain).DistinguishedName
 
-    # Create or reuse GPO
+    # Create GPO if it doesn't exist
     $GPO = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
     if (-not $GPO) {
         $GPO = New-GPO -Name $GPOName -Comment "Password policy GPO created via script"
@@ -27,10 +28,16 @@ try {
         Write-Host "GPO already exists: $GPOName"
     }
 
-    # Link the GPO to the domain (correct DN)
-    New-GPLink -Name $GPOName -Target $domainDN -Enforced $true
+    # Link GPO to the domain
+    $linkExists = Get-GPLink -Target $domainDN | Where-Object { $_.DisplayName -eq $GPOName }
+    if (-not $linkExists) {
+        New-GPLink -Name $GPOName -Target $domainDN -Enforced ([Microsoft.GroupPolicy.EnforceLink]::Yes)
+        Write-Host "Linked GPO to domain."
+    } else {
+        Write-Host "GPO already linked to domain."
+    }
 
-    # Define password policy content
+    # Set password policy using INF file
     $inf = @"
 [Unicode]
 Unicode=yes
@@ -46,11 +53,9 @@ ResetLockoutCount = 15
 LockoutDuration = 15
 "@
 
-    # Write INF file
     $infPath = "$PSScriptRoot\PasswordPolicy.inf"
     $inf | Out-File -Encoding ASCII -FilePath $infPath -Force
 
-    # Copy INF to SYSVOL GPO folder
     $gptPath = "\\$env:USERDNSDOMAIN\SYSVOL\$env:USERDNSDOMAIN\Policies\{$($GPO.Id)}\MACHINE\Microsoft\Windows NT\SecEdit"
     New-Item -ItemType Directory -Path $gptPath -Force | Out-Null
     Copy-Item $infPath -Destination "$gptPath\GptTmpl.inf" -Force
