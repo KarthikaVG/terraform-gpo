@@ -13,33 +13,45 @@ if (-not $isAdmin) {
 }
 
 try {
+    # Import the GroupPolicy module
     Import-Module GroupPolicy -ErrorAction Stop
-    $GPOName = "CIS Benchmark - Password Policy-latest"
 
-    $existingGPO = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
-    if (-not $existingGPO) {
-        $existingGPO = New-GPO -Name $GPOName -Comment "CIS Benchmark compliance GPO-latest"
-        Write-Host "Created GPO: $GPOName"
+    $GPOName = "CIS Benchmark - Password Policy-latest"
+    $OU = "DC=mydomain,DC=local"  #
+
+    # Create or get the GPO
+    $gpo = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
+    if (-not $gpo) {
+        $gpo = New-GPO -Name $GPOName -Comment "CIS password policy-latest"
+        Write-Host "Created new GPO: $GPOName"
     } else {
         Write-Host "GPO already exists: $GPOName"
     }
 
-    # Apply password/account policies to the GPO using correct registry keys
-    Write-Host "Applying password policies to GPO..."
+    # Apply registry-based password policies
+    Write-Host "Applying password policy registry settings to GPO..."
 
-    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SAM\SAM\Domains\Account" -ValueName "MinimumPasswordLength" -Type DWord -Value 14
-    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SAM\SAM\Domains\Account" -ValueName "PasswordHistorySize" -Type DWord -Value 24
-    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SAM\SAM\Domains\Account" -ValueName "PasswordComplexity" -Type DWord -Value 1
-    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SAM\SAM\Domains\Account" -ValueName "MinimumPasswordAge" -Type DWord -Value 1
-    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SAM\SAM\Domains\Account" -ValueName "MaximumPasswordAge" -Type DWord -Value 30
-    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SAM\SAM\Domains\Account" -ValueName "LockoutBadCount" -Type DWord -Value 5
-    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SAM\SAM\Domains\Account" -ValueName "LockoutDuration" -Type DWord -Value 15
-    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SAM\SAM\Domains\Account" -ValueName "ResetLockoutCount" -Type DWord -Value 15
+    $settings = @(
+        @{ Key = "HKLM\System\CurrentControlSet\Services\Netlogon\Parameters"; ValueName = "MaximumPasswordAge"; Type = "DWORD"; Data = 30 },
+        @{ Key = "HKLM\System\CurrentControlSet\Services\Netlogon\Parameters"; ValueName = "MinimumPasswordAge"; Type = "DWORD"; Data = 1 },
+        @{ Key = "HKLM\System\CurrentControlSet\Services\Netlogon\Parameters"; ValueName = "PasswordHistorySize"; Type = "DWORD"; Data = 24 },
+        @{ Key = "HKLM\System\CurrentControlSet\Control\Lsa"; ValueName = "PasswordComplexity"; Type = "DWORD"; Data = 1 },
+        @{ Key = "HKLM\System\CurrentControlSet\Control\Lsa"; ValueName = "MinimumPasswordLength"; Type = "DWORD"; Data = 14 },
+        @{ Key = "HKLM\SYSTEM\CurrentControlSet\Control\Lsa"; ValueName = "LockoutBadCount"; Type = "DWORD"; Data = 5 },
+        @{ Key = "HKLM\SYSTEM\CurrentControlSet\Control\Lsa"; ValueName = "ResetLockoutCount"; Type = "DWORD"; Data = 15 },
+        @{ Key = "HKLM\SYSTEM\CurrentControlSet\Control\Lsa"; ValueName = "LockoutDuration"; Type = "DWORD"; Data = 15 }
+    )
 
-    Write-Host "Password policies successfully configured in the GPO."
+    foreach ($s in $settings) {
+        Set-GPRegistryValue -Name $GPOName -Key $s.Key -ValueName $s.ValueName -Type $s.Type -Value $s.Data
+    }
 
-    $targetOU = "DC=mydomain,DC=local"
-    New-GPLink -Name $GPOName -Target $targetOU -Enforced Yes -ErrorAction SilentlyContinue
+    Write-Host "Registry settings applied to GPO."
+
+    # Link the GPO to the domain
+    New-GPLink -Name $GPOName -Target $OU -Enforced:$true
+
+    Write-Host "Linked $GPOName to $OU"
 
     gpupdate /force | Out-Null
     Write-Host "Group Policy updated."
@@ -50,5 +62,5 @@ try {
     exit 1
 }
 
-Write-Host "CIS Benchmark GPO applied successfully."
+Write-Host "CIS Benchmark GPO successfully created and linked."
 Stop-Transcript
