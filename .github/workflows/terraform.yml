@@ -33,7 +33,9 @@ jobs:
         shell: powershell
         run: |
           Import-Module GPOZaurr
-          Show-GPOZaurr | Out-File GPOAuditReport.html -Encoding utf8
+          $report = Show-GPOZaurr
+          $report | Out-HtmlView -FilePath "C:\Temp\GPOAuditReport.html"
+          Copy-Item -Path "C:\Temp\GPOAuditReport.html" -Destination ".\GPOAuditReport.html"
 
       - name: List files after generating report
         shell: powershell
