@@ -1,53 +1,57 @@
-# Start logging
-Start-Transcript -Path "$PSScriptRoot\script_output.txt" -Append
+Start-Transcript -Path "$PSScriptRoot\apply_gpo_log.txt" -Append
 
-Write-Host "Starting GPO script..."
-Write-Host "Running as: $(whoami)"
-
-# Check if user is Administrator
-$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-
+# Confirm script is running as admin
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
-    Write-Error "This script must be run as Administrator."
+    Write-Error "You must run this script as Administrator."
     Stop-Transcript
     exit 1
 }
 
+Import-Module GroupPolicy
+
+$GPOName = "CIS Benchmark - Password Policy-latest"
+$DomainDN = (Get-ADDomain).DistinguishedName  # e.g., DC=mydomain,DC=local
+
+# Step 1: Create the GPO if it doesn't exist
+$existingGPO = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
+if ($null -eq $existingGPO) {
+    $GPO = New-GPO -Name $GPOName -Comment "CIS Benchmark-aligned password policy"
+    Write-Host "Created new GPO: $GPOName"
+} else {
+    $GPO = $existingGPO
+    Write-Host "GPO already exists: $GPOName"
+}
+
+# Step 2: Link the GPO to the domain root
+$link = Get-GPLink -Target $DomainDN | Where-Object { $_.GPOName -eq $GPO.DisplayName }
+if (-not $link) {
+    New-GPLink -Name $GPOName -Target $DomainDN -LinkEnabled Yes
+    Write-Host "Linked GPO to domain root: $DomainDN"
+} else {
+    Write-Host "GPO is already linked to the domain root."
+}
+
+# Step 3: Apply password policies using Set-GPAccountPolicy
 try {
-    # Import GroupPolicy module
-    Import-Module GroupPolicy -ErrorAction Stop
+    Set-GPAccountPolicy -Name $GPOName `
+        -MinimumPasswordLength 14 `
+        -MaximumPasswordAge 30 `
+        -PasswordComplexity Enabled `
+        -PasswordHistorySize 24 `
+        -MinimumPasswordAge 1 `
+        -LockoutBadCount 5 `
+        -ResetLockoutCount 15 `
+        -LockoutDuration 15
 
-    $GPOName = "CIS Benchmark - Password Policy-latest"
-
-    # Check if the GPO already exists
-    $existingGPO = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
-
-    if ($null -eq $existingGPO) {
-        # Create the GPO if it doesn't exist
-        $GPO = New-GPO -Name $GPOName -Comment "CIS Benchmark compliance GPO-latest"
-        Write-Host "Created GPO: $GPOName"
-    } else {
-        Write-Host "GPO already exists: $GPOName"
-    }
-
-    # Set password policy settings
-    Write-Host "Setting password policies..."
-    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName "MaximumPasswordAge" -Type Dword -Value 30
-    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName "MinimumPasswordLength" -Type Dword -Value 14
-    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName "PasswordComplexity" -Type Dword -Value 1
-
-    Write-Host "Password policy settings applied."
-
-    # Force update group policy
-    gpupdate /force | Out-Null
-    Write-Host "Group Policy updated successfully."
-
+    Write-Host "Password policies applied to GPO correctly."
 } catch {
-    Write-Error "An error occurred: $_"
+    Write-Error "Failed to apply password policy. $_"
     Stop-Transcript
     exit 1
 }
 
-Write-Host "CIS Benchmark GPO applied successfully."
+gpupdate /force | Out-Null
+Write-Host "Group Policy updated successfully."
 
 Stop-Transcript
