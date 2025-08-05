@@ -13,7 +13,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
         with:
-          persist-credentials: false   # Disable default token auth to use PAT instead
+          persist-credentials: false
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -23,42 +23,23 @@ jobs:
         run: |
           terraform init
           terraform apply -auto-approve
-
       - name: Apply GPO from Script
         shell: powershell
         run: |
           powershell -ExecutionPolicy Bypass -File .\apply_gpo.ps1
-
       - name: Generate GPO Report using GPOZaurr
         shell: powershell
         run: |
           Import-Module GPOZaurr
-          Show-GPOZaurr | Out-File GPOAuditReport.html -Encoding utf8
-
-      - name: List files after generating report
-        shell: powershell
-        run: |
-          Write-Output "Listing GPOAuditReport.html files in repo:"
-          Get-ChildItem -Path . -Filter "GPOAuditReport.html" -Recurse
-
-      - name: Check .gitignore content
-        shell: powershell
-        run: |
-          Write-Output "Contents of .gitignore:"
-          if (Test-Path .gitignore) {
-            Get-Content .gitignore
-          } else {
-            Write-Output "No .gitignore file found"
-          }
-
-      - name: Check git status before commit
-        shell: powershell
-        run: |
-          git status
-
+          $report = Show-GPOZaurr
+          $localPath = "$env:USERPROFILE\Desktop\GPOAuditReport.html"
+          $repoPath = "$PWD\GPOAuditReport.html"
+          $report | Out-HtmlView -FilePath $localPath
+          Copy-Item -Path $localPath -Destination $repoPath -Force
+          Write-Host "Report saved to Desktop and copied to repo directory."
       - name: Push GPO Report to GitHub
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}   # Pass PAT here securely
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
         shell: powershell
         run: |
           git config --global user.email "actions@github.com"
@@ -72,3 +53,7 @@ jobs:
           } else {
             Write-Output "Nothing to commit or push"
           }
+      - name: Cleanup
+        shell: powershell
+        run: |
+          Remove-Item "$env:USERPROFILE\Desktop\GPOAuditReport.html" -ErrorAction SilentlyContinue
