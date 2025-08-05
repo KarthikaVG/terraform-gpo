@@ -47,31 +47,20 @@ if (-not $link) {
 Set-GPLink -Name $GPO.DisplayName -Target $DomainDN -Order 1
 Write-Host "GPO link order set to 1"
 
-# Prepare INF file with CIS password policy
-$infPath = "$env:TEMP\cis_password_policy.inf"
-@"
-[System Access]
-MinimumPasswordLength = 14
-MaximumPasswordAge = 30
-MinimumPasswordAge = 1
-PasswordComplexity = 1
-PasswordHistorySize = 24
-LockoutBadCount = 5
-ResetLockoutCount = 15
-LockoutDuration = 15
-"@ | Set-Content -Path $infPath -Encoding ascii -Force
+# Apply CIS-aligned account policies
+Write-Host "Applying CIS Benchmark account policies..."
 
-# Path to LGPO.exe in your repo
-$lgpoExe = "$PSScriptRoot\tools\LGPO.exe"
-if (-not (Test-Path $lgpoExe)) {
-    Write-Error "LGPO.exe not found at $lgpoExe"
-    Stop-Transcript
-    exit 1
-}
+Set-GPAccountPolicy -Name $GPOName `
+  -MinimumPasswordLength 14 `
+  -MaximumPasswordAge 30 `
+  -MinimumPasswordAge 1 `
+  -PasswordComplexity Enabled `
+  -PasswordHistorySize 24 `
+  -LockoutBadCount 5 `
+  -ResetLockoutCount 15 `
+  -LockoutDuration 15
 
-# Apply INF using LGPO
-Start-Process -FilePath $lgpoExe -ArgumentList "/g `"$infPath`"" -Wait -NoNewWindow
-Write-Host "Password policy applied using LGPO"
+Write-Host "Password and lockout policies applied to GPO: $GPOName"
 
 # Force Group Policy update
 gpupdate /force | Out-Null
