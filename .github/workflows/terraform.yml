@@ -22,6 +22,11 @@ jobs:
           terraform init
           terraform apply -auto-approve
 
+      - name: Apply GPO from Script
+        shell: powershell
+        run: |
+          powershell -ExecutionPolicy Bypass -File .\apply_gpo.ps1
+
       - name: Generate GPO Report using GPOZaurr
         shell: powershell
         run: |

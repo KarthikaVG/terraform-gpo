@@ -1,19 +1,53 @@
-# Apply CIS Benchmark GPO settings
+# Start logging
+Start-Transcript -Path "$PSScriptRoot\script_output.txt" -Append
 
-$GPOName = "CIS Benchmark - Password Policy-new"
+Write-Host "Starting GPO script..."
+Write-Host "Running as: $(whoami)"
 
-# Import the GroupPolicy module
-Import-Module GroupPolicy
+# Check if user is Administrator
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
-# Create the GPO
-$GPO = New-GPO -Name $GPOName -Comment "CIS Benchmark compliance GPO-new"
+if (-not $isAdmin) {
+    Write-Error "This script must be run as Administrator."
+    Stop-Transcript
+    exit 1
+}
 
-# Set password policy settings
-Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName "MaximumPasswordAge" -Type Dword -Value 30
-Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName "MinimumPasswordLength" -Type Dword -Value 14
-Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName "PasswordComplexity" -Type Dword -Value 1
+try {
+    # Import GroupPolicy module
+    Import-Module GroupPolicy -ErrorAction Stop
 
-# Force update group policy
-gpupdate /force
+    $GPOName = "CIS Benchmark - Password Policy"
 
-Write-Output "CIS Benchmark GPO applied successfully."
+    # Check if the GPO already exists
+    $existingGPO = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
+
+    if ($null -eq $existingGPO) {
+        # Create the GPO if it doesn't exist
+        $GPO = New-GPO -Name $GPOName -Comment "CIS Benchmark compliance GPO"
+        Write-Host "Created GPO: $GPOName"
+    } else {
+        Write-Host "GPO already exists: $GPOName"
+    }
+
+    # Set password policy settings
+    Write-Host "Setting password policies..."
+    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName "MaximumPasswordAge" -Type Dword -Value 30
+    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName "MinimumPasswordLength" -Type Dword -Value 14
+    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName "PasswordComplexity" -Type Dword -Value 1
+
+    Write-Host "Password policy settings applied."
+
+    # Force update group policy
+    gpupdate /force | Out-Null
+    Write-Host "Group Policy updated successfully."
+
+} catch {
+    Write-Error "An error occurred: $_"
+    Stop-Transcript
+    exit 1
+}
+
+Write-Host "CIS Benchmark GPO applied successfully."
+
+Stop-Transcript
