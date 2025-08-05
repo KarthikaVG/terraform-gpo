@@ -1,15 +1,16 @@
 Start-Transcript -Path "$PSScriptRoot\apply_gpo_log.txt" -Append
 
-Write-Host "`n=== CIS Benchmark GPO Automation Started ==="
+Write-Host ""
+Write-Host "CIS GPO Automation Starting"
 Write-Host "Running as: $(whoami)"
 
-# Check for Administrator Privileges
+# Check if run as Administrator
 $isAdmin = ([Security.Principal.WindowsPrincipal] `
     [Security.Principal.WindowsIdentity]::GetCurrent() `
 ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
 if (-not $isAdmin) {
-    Write-Error "Script must be run as Administrator"
+    Write-Error "This script must be run as Administrator."
     Stop-Transcript
     exit 1
 }
@@ -18,19 +19,20 @@ if (-not $isAdmin) {
 Import-Module GroupPolicy -ErrorAction Stop
 Import-Module ActiveDirectory -ErrorAction Stop
 
-# Define GPO name
+# GPO name
 $GPOName = "CIS Benchmark - Password Policy-final"
 
-# Create or reuse GPO
-$GPO = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
-if (-not $GPO) {
-    $GPO = New-GPO -Name $GPOName -Comment "CIS Password Policy Automation"
+# Create GPO if it doesn't exist
+$existing = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
+if ($null -eq $existing) {
+    $GPO = New-GPO -Name $GPOName -Comment "CIS Benchmark compliance GPO"
     Write-Host "Created new GPO: $GPOName"
 } else {
+    $GPO = $existing
     Write-Host "GPO already exists: $GPOName"
 }
 
-# Link GPO to domain root
+# Link to domain root with order 1
 $DomainDN = (Get-ADDomain).DistinguishedName
 $link = Get-GPLink -Target $DomainDN | Where-Object { $_.GPOName -eq $GPO.DisplayName }
 
@@ -41,24 +43,53 @@ if (-not $link) {
     Write-Host "GPO already linked"
 }
 
-# Set link order to highest priority (1)
+# Set Link Order = 1 (overrides others)
 Set-GPLink -Name $GPO.DisplayName -Target $DomainDN -Order 1
-Write-Host "GPO Link Order set to 1"
+Write-Host "GPO link order set to 1"
 
-# Apply password policy as registry keys (CIS-style)
-Write-Host "Applying CIS password registry settings..."
+# --- CIS Benchmark Settings using Set-GPRegistryValue ---
 
-Set-GPRegistryValue -Name $GPOName -Key "HKLM\SYSTEM\CurrentControlSet\Control\Lsa" -ValueName "LimitBlankPasswordUse" -Type DWord -Value 1
-Set-GPRegistryValue -Name $GPOName -Key "HKLM\SYSTEM\CurrentControlSet\Control\Lsa" -ValueName "DisableDomainCreds" -Type DWord -Value 1
-Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName "MaximumPasswordAge" -Type DWord -Value 30
-Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName "MinimumPasswordLength" -Type DWord -Value 14
-Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName "PasswordComplexity" -Type DWord -Value 1
+# Password Policies
+Set-GPRegistryValue -Name $GPOName `
+  -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" `
+  -ValueName "MinimumPasswordLength" -Type DWord -Value 14
 
-Write-Host "Registry-based CIS policies applied."
+Set-GPRegistryValue -Name $GPOName `
+  -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" `
+  -ValueName "MaximumPasswordAge" -Type DWord -Value 30
 
-# Force GPO update
+Set-GPRegistryValue -Name $GPOName `
+  -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" `
+  -ValueName "MinimumPasswordAge" -Type DWord -Value 1
+
+Set-GPRegistryValue -Name $GPOName `
+  -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" `
+  -ValueName "PasswordComplexity" -Type DWord -Value 1
+
+Set-GPRegistryValue -Name $GPOName `
+  -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" `
+  -ValueName "PasswordHistorySize" -Type DWord -Value 24
+
+# Lockout Policies
+Set-GPRegistryValue -Name $GPOName `
+  -Key "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" `
+  -ValueName "LockoutBadCount" -Type DWord -Value 5
+
+Set-GPRegistryValue -Name $GPOName `
+  -Key "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" `
+  -ValueName "ResetLockoutCount" -Type DWord -Value 15
+
+Set-GPRegistryValue -Name $GPOName `
+  -Key "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" `
+  -ValueName "LockoutDuration" -Type DWord -Value 15
+
+Write-Host "CIS benchmark registry values applied to GPO"
+
+# Force GP update on local machine (optional)
 gpupdate /force | Out-Null
-Write-Host "Group Policy refreshed"
 
-Write-Host "`n=== CIS GPO Automation Completed ==="
+Write-Host "Group Policy refreshed"
+Write-Host ""
+Write-Host "CIS GPO Automation Completed Successfully"
+
 Stop-Transcript
