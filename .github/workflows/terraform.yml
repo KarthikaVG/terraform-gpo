@@ -27,9 +27,11 @@ jobs:
       - name: Download LGPO.exe
         shell: powershell
         run: |
-          Invoke-WebRequest -Uri "https://download.microsoft.com/download/4/3/5/4359C2F1-EDC7-403E-A399-6F3404DE8F1F/LGPO.zip" -OutFile "LGPO.zip"
-          Expand-Archive LGPO.zip -DestinationPath "$PWD\LGPO"
-          Copy-Item "$PWD\LGPO\LGPO.exe" -Destination "$PWD"
+          Write-Host "Downloading LGPO.zip from Microsoft site..."
+          Invoke-WebRequest -Uri "https://download.microsoft.com/download/8/5/C/85C25433-A1B0-4FFA-9429-7E023E7DA8D8/LGPO.zip" -OutFile "LGPO.zip"
+          Expand-Archive -Path "LGPO.zip" -DestinationPath "$PWD\LGPO"
+          Copy-Item -Path "$PWD\LGPO\LGPO.exe" -Destination "$PWD"
+          Write-Host "LGPO.exe is now available in working directory."
 
       - name: Apply GPO from Script
         shell: powershell
