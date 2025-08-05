@@ -3,7 +3,7 @@ Start-Transcript -Path "$PSScriptRoot\script_output.txt" -Append
 Write-Host "Starting GPO script..."
 Write-Host "Running as: $(whoami)"
 
-# Check if running as admin
+# Admin check
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
     Write-Error "This script must be run as Administrator."
@@ -19,6 +19,7 @@ try {
     $domain = $env:USERDNSDOMAIN
     $domainParts = $domain -split '\.'
     $domainDN = ($domainParts | ForEach-Object { "DC=$_" }) -join ','
+    $targetOU = "DC=" + ($domainParts -join ",DC=")
 
     # Create GPO if not exists
     $GPO = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
@@ -29,11 +30,18 @@ try {
         Write-Host "GPO already exists: $GPOName"
     }
 
-    # Link to domain
-    $targetOU = "DC=" + ($domainParts -join ",DC=")
-    New-GPLink -Name $GPOName -Target $targetOU -Enforced Yes
+    # Check if GPO is already linked
+    $existingLinks = Get-GPInheritance -Target $targetOU
+    $isLinked = $existingLinks.GpoLinks | Where-Object { $_.DisplayName -eq $GPOName }
 
-    # Create INF file
+    if (-not $isLinked) {
+        New-GPLink -Name $GPOName -Target $targetOU -Enforced $true
+        Write-Host "Linked GPO to $targetOU"
+    } else {
+        Write-Host "GPO is already linked to $targetOU"
+    }
+
+    # Create INF
     $inf = @"
 [Unicode]
 Unicode=yes
@@ -50,23 +58,16 @@ LockoutDuration = 15
 "@
 
     $infPath = "$PSScriptRoot\PasswordPolicy.inf"
-    $inf | Out-File -Encoding ASCII -FilePath $infPath -Force
+    $inf | Out-File -Encoding ASCII -FilePath $infPath
 
-    # Backup GPO to a temp path
-    $tempGpoPath = "$PSScriptRoot\GPOBackup"
-    Backup-GPO -Name $GPOName -Path $tempGpoPath -Force
-
-    # Get GUID of backed-up GPO
-    $gpoGuid = (Get-ChildItem $tempGpoPath)[0].Name
-
-    # Import INF to GPO using Secedit
-    $importCmd = "secedit.exe /configure /db secedit.sdb /cfg `"$infPath`" /quiet"
-    Invoke-Expression $importCmd
-
-    # Copy INF manually to SYSVOL for visibility in GPMC
+    # Ensure SecEdit folder
     $gptPath = "\\$domain\SYSVOL\$domain\Policies\{$($GPO.Id)}\MACHINE\Microsoft\Windows NT\SecEdit"
-    New-Item -ItemType Directory -Path $gptPath -Force | Out-Null
+    if (-not (Test-Path $gptPath)) {
+        New-Item -ItemType Directory -Path $gptPath -Force | Out-Null
+    }
+
     Copy-Item -Path $infPath -Destination "$gptPath\GptTmpl.inf" -Force
+    Write-Host "Copied INF to SYSVOL"
 
     gpupdate /force | Out-Null
     Write-Host "Group Policy updated."
