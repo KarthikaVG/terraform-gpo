@@ -1,4 +1,3 @@
-# Start logging
 Start-Transcript -Path "$PSScriptRoot\script_output.txt" -Append
 
 Write-Host "Starting GPO script..."
@@ -28,16 +27,15 @@ try {
         Write-Host "GPO already exists: $GPOName"
     }
 
-    # Link GPO to the domain
-    $linkExists = Get-GPLink -Target $domainDN | Where-Object { $_.DisplayName -eq $GPOName }
-    if (-not $linkExists) {
-        New-GPLink -Name $GPOName -Target $domainDN -Enforced ([Microsoft.GroupPolicy.EnforceLink]::Yes)
-        Write-Host "Linked GPO to domain."
-    } else {
-        Write-Host "GPO already linked to domain."
+    # Link GPO to domain root (skip Get-GPLink)
+    try {
+        New-GPLink -Name $GPOName -Target $domainDN -Enforced ([Microsoft.GroupPolicy.EnforceLink]::Yes) -ErrorAction Stop
+        Write-Host "GPO linked to domain root: $domainDN"
+    } catch {
+        Write-Warning "Linking failed (possibly already linked): $_"
     }
 
-    # Set password policy using INF file
+    # Define and write password policy INF
     $inf = @"
 [Unicode]
 Unicode=yes
