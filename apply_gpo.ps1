@@ -4,7 +4,7 @@ Start-Transcript -Path "$PSScriptRoot\script_output.txt" -Append
 Write-Host "Starting GPO script..."
 Write-Host "Running as: $(whoami)"
 
-# Check for Administrator
+# Check admin
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
     Write-Error "This script must be run as Administrator."
@@ -14,29 +14,37 @@ if (-not $isAdmin) {
 
 try {
     Import-Module GroupPolicy -ErrorAction Stop
-    $GPOName = "CIS Benchmark - Password Policy-latest"
 
-    $existingGPO = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
-    if (-not $existingGPO) {
-        $existingGPO = New-GPO -Name $GPOName -Comment "CIS Benchmark compliance GPO-latest"
+    $GPOName = "CIS Benchmark - Password Policy-latest"
+    $domainDN = (Get-ADDomain).DistinguishedName  # e.g., dc=corp,dc=local
+
+    # Create or get existing GPO
+    $gpo = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
+    if (-not $gpo) {
+        $gpo = New-GPO -Name $GPOName -Comment "CIS Benchmark compliance GPO-latest"
         Write-Host "Created GPO: $GPOName"
     } else {
         Write-Host "GPO already exists: $GPOName"
     }
 
-    # Set password policies in the GPO
-    Write-Host "Applying password policies to GPO..."
+    # Link GPO to domain root
+    New-GPLink -Name $GPOName -Target $domainDN -Enforced $true
 
-    Set-GPOption -Name $GPOName -MinimumPasswordLength 14
-    Set-GPOption -Name $GPOName -MaximumPasswordAge 30
-    Set-GPOption -Name $GPOName -MinimumPasswordAge 1
-    Set-GPOption -Name $GPOName -PasswordComplexity Enabled
-    Set-GPOption -Name $GPOName -PasswordHistorySize 24
-    Set-GPOption -Name $GPOName -LockoutBadCount 5
-    Set-GPOption -Name $GPOName -ResetLockoutCount 15
-    Set-GPOption -Name $GPOName -LockoutDuration 15
+    Write-Host "Linking GPO to domain root: $domainDN"
 
-    Write-Host "Password policies successfully configured in the GPO."
+    # Password policies
+    Write-Host "Setting password policy registry values..."
+
+    $basePath = "HKLM\System\CurrentControlSet\Control\Lsa"
+
+    Set-GPRegistryValue -Name $GPOName -Key "$basePath" -ValueName "MinimumPasswordLength" -Type Dword -Value 14
+    Set-GPRegistryValue -Name $GPOName -Key "$basePath" -ValueName "MaximumPasswordAge" -Type Dword -Value 30
+    Set-GPRegistryValue -Name $GPOName -Key "$basePath" -ValueName "MinimumPasswordAge" -Type Dword -Value 1
+    Set-GPRegistryValue -Name $GPOName -Key "$basePath" -ValueName "PasswordComplexity" -Type Dword -Value 1
+    Set-GPRegistryValue -Name $GPOName -Key "$basePath" -ValueName "PasswordHistorySize" -Type Dword -Value 24
+    Set-GPRegistryValue -Name $GPOName -Key "$basePath" -ValueName "LockoutBadCount" -Type Dword -Value 5
+
+    Write-Host "Password policy registry values set in GPO."
 
     gpupdate /force | Out-Null
     Write-Host "Group Policy updated."
@@ -47,5 +55,5 @@ try {
     exit 1
 }
 
-Write-Host "CIS Benchmark GPO applied successfully."
+Write-Host "GPO created and password policy applied successfully."
 Stop-Transcript

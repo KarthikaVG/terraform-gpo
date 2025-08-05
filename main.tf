@@ -5,7 +5,7 @@ terraform {
       version = "~> 2.0"
     }
     null = {
-      source = "hashicorp/null"
+      source  = "hashicorp/null"
       version = "~> 3.0"
     }
   }
@@ -14,11 +14,13 @@ terraform {
 provider "local" {}
 provider "null" {}
 
+# Provision PowerShell script
 resource "local_file" "apply_gpo" {
   filename = "${path.module}/apply_gpo.ps1"
   content  = file("${path.module}/apply_gpo.ps1")
 }
 
+# Execute script
 resource "null_resource" "run_gpo_script" {
   depends_on = [local_file.apply_gpo]
 
