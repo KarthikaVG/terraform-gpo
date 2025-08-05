@@ -6,7 +6,7 @@ $GPOName = "CIS Benchmark - Password Policy-new"
 Import-Module GroupPolicy
 
 # Create the GPO
-$GPO = New-GPO -Name $GPOName -Comment "CIS Benchmark compliance GPO"
+$GPO = New-GPO -Name $GPOName -Comment "CIS Benchmark compliance GPO-new"
 
 # Set password policy settings
 Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName "MaximumPasswordAge" -Type Dword -Value 30
