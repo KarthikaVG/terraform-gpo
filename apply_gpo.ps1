@@ -17,14 +17,14 @@ try {
     # Import GroupPolicy module
     Import-Module GroupPolicy -ErrorAction Stop
 
-    $GPOName = "CIS Benchmark - Password Policy"
+    $GPOName = "CIS Benchmark - Password Policy-new"
 
     # Check if the GPO already exists
     $existingGPO = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
 
     if ($null -eq $existingGPO) {
         # Create the GPO if it doesn't exist
-        $GPO = New-GPO -Name $GPOName -Comment "CIS Benchmark compliance GPO"
+        $GPO = New-GPO -Name $GPOName -Comment "CIS Benchmark compliance GPO-new"
         Write-Host "Created GPO: $GPOName"
     } else {
         Write-Host "GPO already exists: $GPOName"
