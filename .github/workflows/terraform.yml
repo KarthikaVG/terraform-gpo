@@ -24,6 +24,13 @@ jobs:
           terraform init
           terraform apply -auto-approve
 
+      - name: Download LGPO.exe
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://download.microsoft.com/download/4/3/5/4359C2F1-EDC7-403E-A399-6F3404DE8F1F/LGPO.zip" -OutFile "LGPO.zip"
+          Expand-Archive LGPO.zip -DestinationPath "$PWD\LGPO"
+          Copy-Item "$PWD\LGPO\LGPO.exe" -Destination "$PWD"
+
       - name: Apply GPO from Script
         shell: powershell
         run: |
