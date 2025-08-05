@@ -13,45 +13,49 @@ if (-not $isAdmin) {
 }
 
 try {
-    # Import the GroupPolicy module
     Import-Module GroupPolicy -ErrorAction Stop
 
     $GPOName = "CIS Benchmark - Password Policy-latest"
-    $OU = "DC=mydomain,DC=local"  #
+    $domainDN = (Get-ADDomain).DistinguishedName
 
-    # Create or get the GPO
-    $gpo = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
-    if (-not $gpo) {
-        $gpo = New-GPO -Name $GPOName -Comment "CIS password policy-latest"
-        Write-Host "Created new GPO: $GPOName"
+    # Create or reuse GPO
+    $GPO = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
+    if (-not $GPO) {
+        $GPO = New-GPO -Name $GPOName -Comment "Password policy GPO created via script"
+        Write-Host "Created GPO: $GPOName"
     } else {
         Write-Host "GPO already exists: $GPOName"
     }
 
-    # Apply registry-based password policies
-    Write-Host "Applying password policy registry settings to GPO..."
+    # Link the GPO to the domain (correct DN)
+    New-GPLink -Name $GPOName -Target $domainDN -Enforced $true
 
-    $settings = @(
-        @{ Key = "HKLM\System\CurrentControlSet\Services\Netlogon\Parameters"; ValueName = "MaximumPasswordAge"; Type = "DWORD"; Data = 30 },
-        @{ Key = "HKLM\System\CurrentControlSet\Services\Netlogon\Parameters"; ValueName = "MinimumPasswordAge"; Type = "DWORD"; Data = 1 },
-        @{ Key = "HKLM\System\CurrentControlSet\Services\Netlogon\Parameters"; ValueName = "PasswordHistorySize"; Type = "DWORD"; Data = 24 },
-        @{ Key = "HKLM\System\CurrentControlSet\Control\Lsa"; ValueName = "PasswordComplexity"; Type = "DWORD"; Data = 1 },
-        @{ Key = "HKLM\System\CurrentControlSet\Control\Lsa"; ValueName = "MinimumPasswordLength"; Type = "DWORD"; Data = 14 },
-        @{ Key = "HKLM\SYSTEM\CurrentControlSet\Control\Lsa"; ValueName = "LockoutBadCount"; Type = "DWORD"; Data = 5 },
-        @{ Key = "HKLM\SYSTEM\CurrentControlSet\Control\Lsa"; ValueName = "ResetLockoutCount"; Type = "DWORD"; Data = 15 },
-        @{ Key = "HKLM\SYSTEM\CurrentControlSet\Control\Lsa"; ValueName = "LockoutDuration"; Type = "DWORD"; Data = 15 }
-    )
+    # Define password policy content
+    $inf = @"
+[Unicode]
+Unicode=yes
 
-    foreach ($s in $settings) {
-        Set-GPRegistryValue -Name $GPOName -Key $s.Key -ValueName $s.ValueName -Type $s.Type -Value $s.Data
-    }
+[System Access]
+MinimumPasswordLength = 14
+MaximumPasswordAge = 30
+MinimumPasswordAge = 1
+PasswordHistorySize = 24
+PasswordComplexity = 1
+LockoutBadCount = 5
+ResetLockoutCount = 15
+LockoutDuration = 15
+"@
 
-    Write-Host "Registry settings applied to GPO."
+    # Write INF file
+    $infPath = "$PSScriptRoot\PasswordPolicy.inf"
+    $inf | Out-File -Encoding ASCII -FilePath $infPath -Force
 
-    # Link the GPO to the domain
-    New-GPLink -Name $GPOName -Target $OU -Enforced:$true
+    # Copy INF to SYSVOL GPO folder
+    $gptPath = "\\$env:USERDNSDOMAIN\SYSVOL\$env:USERDNSDOMAIN\Policies\{$($GPO.Id)}\MACHINE\Microsoft\Windows NT\SecEdit"
+    New-Item -ItemType Directory -Path $gptPath -Force | Out-Null
+    Copy-Item $infPath -Destination "$gptPath\GptTmpl.inf" -Force
 
-    Write-Host "Linked $GPOName to $OU"
+    Write-Host "Password policy applied successfully to GPO and SYSVOL."
 
     gpupdate /force | Out-Null
     Write-Host "Group Policy updated."
@@ -62,5 +66,5 @@ try {
     exit 1
 }
 
-Write-Host "CIS Benchmark GPO successfully created and linked."
+Write-Host "CIS Benchmark GPO applied successfully."
 Stop-Transcript
