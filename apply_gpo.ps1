@@ -4,9 +4,8 @@ Start-Transcript -Path "$PSScriptRoot\script_output.txt" -Append
 Write-Host "Starting GPO script..."
 Write-Host "Running as: $(whoami)"
 
-# To check if user is Administrator
+# Check for Administrator
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-
 if (-not $isAdmin) {
     Write-Error "This script must be run as Administrator."
     Stop-Transcript
@@ -14,40 +13,33 @@ if (-not $isAdmin) {
 }
 
 try {
-    # Import GroupPolicy module
     Import-Module GroupPolicy -ErrorAction Stop
-
     $GPOName = "CIS Benchmark - Password Policy-latest"
 
-    # Check if the GPO already exists
     $existingGPO = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
-
-    if ($null -eq $existingGPO) {
-        # Create the GPO if it doesn't exist
-        $GPO = New-GPO -Name $GPOName -Comment "CIS Benchmark compliance GPO-latest"
+    if (-not $existingGPO) {
+        $existingGPO = New-GPO -Name $GPOName -Comment "CIS Benchmark compliance GPO-latest"
         Write-Host "Created GPO: $GPOName"
     } else {
         Write-Host "GPO already exists: $GPOName"
     }
 
-   # Apply password policy using INF template via LGPO.exe
-   Write-Host "Applying CIS-compliant password policies using LGPO.exe..."
+    # Set password policies in the GPO
+    Write-Host "Applying password policies to GPO..."
 
-   $infPath = "$PSScriptRoot\password_policy.inf"
-   $lgpoPath = "$PSScriptRoot\tools\LGPO.exe"
+    Set-GPOption -Name $GPOName -MinimumPasswordLength 14
+    Set-GPOption -Name $GPOName -MaximumPasswordAge 30
+    Set-GPOption -Name $GPOName -MinimumPasswordAge 1
+    Set-GPOption -Name $GPOName -PasswordComplexity Enabled
+    Set-GPOption -Name $GPOName -PasswordHistorySize 24
+    Set-GPOption -Name $GPOName -LockoutBadCount 5
+    Set-GPOption -Name $GPOName -ResetLockoutCount 15
+    Set-GPOption -Name $GPOName -LockoutDuration 15
 
-   if (-Not (Test-Path $lgpoPath)) {
-       throw "LGPO.exe not found in tools folder. Make sure it's downloaded and placed at: $lgpoPath"
-   }
+    Write-Host "Password policies successfully configured in the GPO."
 
-   & $lgpoPath /g $infPath
-
-   Write-Host "Password policy applied using LGPO.exe."
-
-
-    # Force update group policy
     gpupdate /force | Out-Null
-    Write-Host "Group Policy updated successfully."
+    Write-Host "Group Policy updated."
 
 } catch {
     Write-Error "An error occurred: $_"
