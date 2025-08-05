@@ -4,7 +4,7 @@ Write-Host ""
 Write-Host "CIS GPO Automation Starting"
 Write-Host "Running as: $(whoami)"
 
-# Check for Administrator privilege
+# Check if running as Administrator
 $isAdmin = ([Security.Principal.WindowsPrincipal] `
     [Security.Principal.WindowsIdentity]::GetCurrent() `
 ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -19,37 +19,35 @@ if (-not $isAdmin) {
 Import-Module GroupPolicy -ErrorAction Stop
 Import-Module ActiveDirectory -ErrorAction Stop
 
-# Find unique GPO name
-$baseName = "CIS Benchmark - Password Policy-final"
-$GPOName = $baseName
-$i = 1
+# Define GPO
+$GPOName = "CIS Benchmark - Password Policy-final"
 
-while (Get-GPO -Name $GPOName -ErrorAction SilentlyContinue) {
-    $GPOName = "$baseName-$i"
-    $i++
+# Check or create GPO
+$gpo = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
+if (-not $gpo) {
+    $gpo = New-GPO -Name $GPOName -Comment "CIS Benchmark Password Policy"
+    Write-Host "Created GPO: $GPOName"
+} else {
+    Write-Host "GPO already exists: $GPOName"
 }
 
-# Create new GPO
-$GPO = New-GPO -Name $GPOName -Comment "CIS Benchmark compliance GPO"
-Write-Host "Created new GPO: $GPOName"
-
-# Link GPO to domain root
+# Link GPO to domain root with highest priority
 $DomainDN = (Get-ADDomain).DistinguishedName
-$link = Get-GPLink -Target $DomainDN | Where-Object { $_.GPOName -eq $GPO.DisplayName }
+$link = Get-GPLink -Target $DomainDN | Where-Object { $_.GPOName -eq $GPOName }
 
 if (-not $link) {
-    New-GPLink -Name $GPO.DisplayName -Target $DomainDN -LinkEnabled Yes
+    New-GPLink -Name $GPOName -Target $DomainDN -LinkEnabled Yes
     Write-Host "Linked GPO to domain: $DomainDN"
 } else {
     Write-Host "GPO already linked to domain root"
 }
 
-# Set GPO link order
-Set-GPLink -Name $GPO.DisplayName -Target $DomainDN -Order 1
+# Set GPO Link Order = 1
+Set-GPLink -Name $GPOName -Target $DomainDN -Order 1
 Write-Host "GPO link order set to 1"
 
-# Apply password policies using registry values
-Write-Host "Applying CIS password policies via registry..."
+# Apply password policies via registry keys
+Write-Host "Applying CIS password policies via registry values..."
 
 Set-GPRegistryValue -Name $GPOName `
   -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" `
@@ -71,7 +69,7 @@ Set-GPRegistryValue -Name $GPOName `
   -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" `
   -ValueName "PasswordHistorySize" -Type DWord -Value 24
 
-# Lockout policies
+# Apply account lockout policies
 Set-GPRegistryValue -Name $GPOName `
   -Key "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" `
   -ValueName "LockoutBadCount" -Type DWord -Value 5
@@ -84,11 +82,11 @@ Set-GPRegistryValue -Name $GPOName `
   -Key "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" `
   -ValueName "LockoutDuration" -Type DWord -Value 15
 
-# Force Group Policy update
+Write-Host "CIS password and lockout policies successfully applied to GPO: $GPOName"
+
+# Refresh policy
 gpupdate /force | Out-Null
-Write-Host "Group Policy refreshed."
 
 Write-Host ""
 Write-Host "CIS GPO Automation Completed Successfully"
-
 Stop-Transcript
