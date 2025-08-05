@@ -16,7 +16,6 @@ try {
     Import-Module GroupPolicy -ErrorAction Stop
     $GPOName = "CIS Benchmark - Password Policy-latest"
 
-    # Check or create GPO
     $existingGPO = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
     if (-not $existingGPO) {
         $existingGPO = New-GPO -Name $GPOName -Comment "CIS Benchmark compliance GPO-latest"
@@ -25,17 +24,25 @@ try {
         Write-Host "GPO already exists: $GPOName"
     }
 
-    # Optional: Link GPO to the domain root or OU
-    $targetOU = "DC=mydomain,DC=local"  
-    Set-GPLink -Name $GPOName -Target $targetOU -Enforced ([Microsoft.GroupPolicy.EnforceLink]::Yes)
-    Write-Host "Linked GPO to $targetOU with Enforced = Yes"
+    # Apply password/account policies to the GPO using correct registry keys
+    Write-Host "Applying password policies to GPO..."
 
-    # Apply password policy settings (example)
-    Set-GPRegistryValue -Name $GPOName -Key "HKLM\System\CurrentControlSet\Control\Lsa" -ValueName "LimitBlankPasswordUse" -Type DWord -Value 1
+    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SAM\SAM\Domains\Account" -ValueName "MinimumPasswordLength" -Type DWord -Value 14
+    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SAM\SAM\Domains\Account" -ValueName "PasswordHistorySize" -Type DWord -Value 24
+    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SAM\SAM\Domains\Account" -ValueName "PasswordComplexity" -Type DWord -Value 1
+    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SAM\SAM\Domains\Account" -ValueName "MinimumPasswordAge" -Type DWord -Value 1
+    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SAM\SAM\Domains\Account" -ValueName "MaximumPasswordAge" -Type DWord -Value 30
+    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SAM\SAM\Domains\Account" -ValueName "LockoutBadCount" -Type DWord -Value 5
+    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SAM\SAM\Domains\Account" -ValueName "LockoutDuration" -Type DWord -Value 15
+    Set-GPRegistryValue -Name $GPOName -Key "HKLM\SAM\SAM\Domains\Account" -ValueName "ResetLockoutCount" -Type DWord -Value 15
 
-    # Update policy
+    Write-Host "Password policies successfully configured in the GPO."
+
+    $targetOU = "DC=mydomain,DC=local"
+    New-GPLink -Name $GPOName -Target $targetOU -Enforced Yes -ErrorAction SilentlyContinue
+
     gpupdate /force | Out-Null
-    Write-Host "Group Policy updated successfully."
+    Write-Host "Group Policy updated."
 
 } catch {
     Write-Error "An error occurred: $_"
