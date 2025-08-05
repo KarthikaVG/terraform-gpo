@@ -30,15 +30,20 @@ try {
         Write-Host "GPO already exists: $GPOName"
     }
 
-    # Apply password policy using INF template via secedit
-    Write-Host "Applying CIS-compliant password policies using secedit..."
+   # Apply password policy using INF template via LGPO.exe
+   Write-Host "Applying CIS-compliant password policies using LGPO.exe..."
 
-    $infPath = "$PSScriptRoot\password_policy.inf"
-    $dbPath = "$PSScriptRoot\secedit.sdb"
+   $infPath = "$PSScriptRoot\password_policy.inf"
+   $lgpoPath = "$PSScriptRoot\tools\LGPO.exe"
 
-    secedit /configure /db $dbPath /cfg $infPath /quiet
+   if (-Not (Test-Path $lgpoPath)) {
+       throw "LGPO.exe not found in tools folder. Make sure it's downloaded and placed at: $lgpoPath"
+   }
 
-    Write-Host "Password policy applied using security template."
+   & $lgpoPath /g $infPath
+
+   Write-Host "Password policy applied using LGPO.exe."
+
 
     # Force update group policy
     gpupdate /force | Out-Null
