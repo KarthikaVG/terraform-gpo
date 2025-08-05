@@ -1,10 +1,9 @@
-# Start logging
 Start-Transcript -Path "$PSScriptRoot\script_output.txt" -Append
 
 Write-Host "Starting GPO script..."
 Write-Host "Running as: $(whoami)"
 
-# Check for Administrator privileges
+# Check if running as admin
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
     Write-Error "This script must be run as Administrator."
@@ -13,11 +12,9 @@ if (-not $isAdmin) {
 }
 
 try {
-    # Import modules
     Import-Module GroupPolicy -ErrorAction Stop
     Import-Module ActiveDirectory -ErrorAction Stop
 
-    # Set GPO name and domain
     $GPOName = "CIS Benchmark - Password Policy-latest"
     $domain = $env:USERDNSDOMAIN
     $domainParts = $domain -split '\.'
@@ -32,10 +29,11 @@ try {
         Write-Host "GPO already exists: $GPOName"
     }
 
-    # Link GPO to the domain
-    New-GPLink -Name $GPOName -Target "DC=$($domainParts -join ',DC=')" -Enforced Yes
+    # Link to domain
+    $targetOU = "DC=" + ($domainParts -join ",DC=")
+    New-GPLink -Name $GPOName -Target $targetOU -Enforced Yes
 
-    # Define password policy as INF
+    # Create INF file
     $inf = @"
 [Unicode]
 Unicode=yes
@@ -51,18 +49,25 @@ ResetLockoutCount = 15
 LockoutDuration = 15
 "@
 
-    # Save INF file
     $infPath = "$PSScriptRoot\PasswordPolicy.inf"
     $inf | Out-File -Encoding ASCII -FilePath $infPath -Force
 
-    # Path to GPO’s GPTTMPL.inf file in SYSVOL
+    # Backup GPO to a temp path
+    $tempGpoPath = "$PSScriptRoot\GPOBackup"
+    Backup-GPO -Name $GPOName -Path $tempGpoPath -Force
+
+    # Get GUID of backed-up GPO
+    $gpoGuid = (Get-ChildItem $tempGpoPath)[0].Name
+
+    # Import INF to GPO using Secedit
+    $importCmd = "secedit.exe /configure /db secedit.sdb /cfg `"$infPath`" /quiet"
+    Invoke-Expression $importCmd
+
+    # Copy INF manually to SYSVOL for visibility in GPMC
     $gptPath = "\\$domain\SYSVOL\$domain\Policies\{$($GPO.Id)}\MACHINE\Microsoft\Windows NT\SecEdit"
     New-Item -ItemType Directory -Path $gptPath -Force | Out-Null
     Copy-Item -Path $infPath -Destination "$gptPath\GptTmpl.inf" -Force
 
-    Write-Host "Password policy written to SYSVOL GPTTMPL.inf"
-
-    # Force update
     gpupdate /force | Out-Null
     Write-Host "Group Policy updated."
 
