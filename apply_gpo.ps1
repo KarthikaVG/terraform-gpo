@@ -3,8 +3,10 @@ Start-Transcript -Path "$PSScriptRoot\script_output.txt" -Append
 Write-Host "Starting GPO script..."
 Write-Host "Running as: $(whoami)"
 
-# Check for Admin privileges
-$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+# Ensure running as Admin
+$isAdmin = ([Security.Principal.WindowsPrincipal] `
+    [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
+    [Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
     Write-Error "This script must be run as Administrator."
     Stop-Transcript
@@ -12,15 +14,15 @@ if (-not $isAdmin) {
 }
 
 try {
+    # Import modules
     Import-Module GroupPolicy -ErrorAction Stop
     Import-Module ActiveDirectory -ErrorAction Stop
 
     $GPOName = "CIS Benchmark - Password Policy-latest"
     $domain = Get-ADDomain
-    $domainDN = $domain.DistinguishedName
-    $targetOU = $domainDN
+    $targetOU = $domain.DistinguishedName
 
-    # Create or reuse the GPO
+    # Create GPO if not exists
     $GPO = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
     if (-not $GPO) {
         $GPO = New-GPO -Name $GPOName -Comment "Password policy GPO created via automation"
@@ -29,17 +31,17 @@ try {
         Write-Host "GPO already exists: $GPOName"
     }
 
-    # Link to domain only if not already linked
-    $existingLinks = (Get-GPInheritance -Target "DC=$($domain.Name),DC=$($domain.Forest)") | Select-Object -ExpandProperty GpoLinks
-    $linked = $existingLinks | Where-Object { $_.DisplayName -eq $GPOName }
+    # Link GPO if not already linked
+    $linked = (Get-GPInheritance -Target $domain.DistinguishedName).GpoLinks |
+              Where-Object { $_.DisplayName -eq $GPOName }
     if (-not $linked) {
-        New-GPLink -Name $GPOName -Target $targetOU -Enforced:$true
-        Write-Host "GPO linked to domain."
+        New-GPLink -Name $GPOName -Target $domain.DistinguishedName -Enforced ([Microsoft.GroupPolicy.EnforceLink]::Yes)
+        Write-Host "Linked GPO to domain."
     } else {
         Write-Host "GPO is already linked to domain."
     }
 
-    # Write password policies
+    # Set Account Policies
     $inf = @"
 [Unicode]
 Unicode=yes
@@ -58,14 +60,13 @@ LockoutDuration = 15
     $infPath = "$PSScriptRoot\PasswordPolicy.inf"
     $inf | Out-File -Encoding ASCII -FilePath $infPath -Force
 
+    # Write INF to SYSVOL GPT location
     $gptPath = "\\$($domain.DNSRoot)\SYSVOL\$($domain.DNSRoot)\Policies\{$($GPO.Id)}\MACHINE\Microsoft\Windows NT\SecEdit"
     New-Item -ItemType Directory -Path $gptPath -Force | Out-Null
-    Copy-Item $infPath -Destination "$gptPath\GptTmpl.inf" -Force
+    Copy-Item -Path $infPath -Destination "$gptPath\GptTmpl.inf" -Force
 
-    Write-Host "Password policy written to SYSVOL."
-
+    Write-Host "Password policy applied successfully to GPO and SYSVOL."
     gpupdate /force | Out-Null
-    Write-Host "Group Policy updated."
 
 } catch {
     Write-Error "An error occurred: $_"
@@ -73,5 +74,5 @@ LockoutDuration = 15
     exit 1
 }
 
-Write-Host "GPO applied successfully and visible in GPMC."
+Write-Host "CIS Benchmark GPO applied successfully."
 Stop-Transcript
