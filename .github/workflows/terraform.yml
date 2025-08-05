@@ -6,28 +6,27 @@ on:
       - main
 
 jobs:
-  terraform:
+  deploy:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Repo
         uses: actions/checkout@v3
-        with:
-          persist-credentials: false
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
 
-      - name: Initialize and Apply Terraform
+      - name: Terraform Init
         shell: powershell
-        run: |
-          terraform init
-          terraform apply -auto-approve
+        run: terraform init
 
-      - name: Apply GPO from Script
+      - name: Terraform Apply
         shell: powershell
-        run: |
-          powershell -ExecutionPolicy Bypass -File .\apply_gpo.ps1
+        run: terraform apply -auto-approve
+
+      - name: Apply GPO Script
+        shell: powershell
+        run: powershell -ExecutionPolicy Bypass -File .\apply_gpo.ps1
 
       - name: Generate GPO Report using GPOZaurr
         shell: powershell
@@ -38,7 +37,6 @@ jobs:
           $repoPath = "$PWD\GPOAuditReport.html"
           $report | Out-HtmlView -FilePath $localPath
           Copy-Item -Path $localPath -Destination $repoPath -Force
-          Write-Host "Report saved to Desktop and copied to repo directory."
 
       - name: Push GPO Report to GitHub
         env:
@@ -48,17 +46,10 @@ jobs:
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
           git remote set-url origin https://x-access-token:$env:GITHUB_TOKEN@github.com/KarthikaVG/terraform-gpo.git
-
           git add GPOAuditReport.html
-          $status = git status --porcelain
-          if ($status) {
+          if (git status --porcelain) {
             git commit -m "Add GPO audit report"
             git push
           } else {
-            Write-Output "Nothing to commit or push"
+            Write-Host "No changes to commit"
           }
-
-      - name: Cleanup
-        shell: powershell
-        run: |
-          Remove-Item "$env:USERPROFILE\Desktop\GPOAuditReport.html" -ErrorAction SilentlyContinue
