@@ -6,50 +6,69 @@ on:
       - main
 
 jobs:
-  deploy:
+  terraform:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout Repo
+      - name: Checkout Code
         uses: actions/checkout@v3
+        with:
+          persist-credentials: false   # Disable default token auth to use PAT instead
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
 
-      - name: Terraform Init
+      - name: Initialize and Apply Terraform
         shell: powershell
-        run: terraform init
+        run: |
+          terraform init
+          terraform apply -auto-approve
 
-      - name: Terraform Apply
+      - name: Apply GPO from Script
         shell: powershell
-        run: terraform apply -auto-approve
-
-      - name: Apply GPO Script
-        shell: powershell
-        run: powershell -ExecutionPolicy Bypass -File .\apply_gpo.ps1
+        run: |
+          powershell -ExecutionPolicy Bypass -File .\apply_gpo.ps1
 
       - name: Generate GPO Report using GPOZaurr
         shell: powershell
         run: |
           Import-Module GPOZaurr
-          $report = Show-GPOZaurr
-          $localPath = "$env:USERPROFILE\Desktop\GPOAuditReport.html"
-          $repoPath = "$PWD\GPOAuditReport.html"
-          $report | Out-HtmlView -FilePath $localPath
-          Copy-Item -Path $localPath -Destination $repoPath -Force
+          Show-GPOZaurr | Out-File GPOAuditReport.html -Encoding utf8
+
+      - name: List files after generating report
+        shell: powershell
+        run: |
+          Write-Output "Listing GPOAuditReport.html files in repo:"
+          Get-ChildItem -Path . -Filter "GPOAuditReport.html" -Recurse
+
+      - name: Check .gitignore content
+        shell: powershell
+        run: |
+          Write-Output "Contents of .gitignore:"
+          if (Test-Path .gitignore) {
+            Get-Content .gitignore
+          } else {
+            Write-Output "No .gitignore file found"
+          }
+
+      - name: Check git status before commit
+        shell: powershell
+        run: |
+          git status
 
       - name: Push GPO Report to GitHub
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}   # Pass PAT here securely
         shell: powershell
         run: |
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
           git remote set-url origin https://x-access-token:$env:GITHUB_TOKEN@github.com/KarthikaVG/terraform-gpo.git
           git add GPOAuditReport.html
-          if (git status --porcelain) {
+          $status = git status --porcelain
+          if ($status) {
             git commit -m "Add GPO audit report"
             git push
           } else {
-            Write-Host "No changes to commit"
+            Write-Output "Nothing to commit or push"
           }
