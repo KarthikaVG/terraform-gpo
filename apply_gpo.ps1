@@ -1,10 +1,11 @@
+# Start logging
 Start-Transcript -Path "$PSScriptRoot\script_output.txt" -Append
 
 Write-Host "Starting GPO script..."
 Write-Host "Running as: $(whoami)"
 
-# Check if running as Administrator
-$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+# Check for Administrator privileges
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
     Write-Error "This script must be run as Administrator."
     Stop-Transcript
@@ -12,20 +13,17 @@ if (-not $isAdmin) {
 }
 
 try {
+    # Import modules
     Import-Module GroupPolicy -ErrorAction Stop
+    Import-Module ActiveDirectory -ErrorAction Stop
 
+    # Set GPO name and domain
     $GPOName = "CIS Benchmark - Password Policy-latest"
-
-    # Get domain name from environment
     $domain = $env:USERDNSDOMAIN
-    if (-not $domain) {
-        throw "USERDNSDOMAIN environment variable not found. Are you running in a domain-joined machine?"
-    }
+    $domainParts = $domain -split '\.'
+    $domainDN = ($domainParts | ForEach-Object { "DC=$_" }) -join ','
 
-    # Convert domain to Distinguished Name (DN)
-    $domainDN = ($domain -split '\.') | ForEach-Object { "DC=$_" } -join ','
-
-    # Check if GPO exists
+    # Create GPO if not exists
     $GPO = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
     if (-not $GPO) {
         $GPO = New-GPO -Name $GPOName -Comment "Password policy GPO created via script"
@@ -34,11 +32,11 @@ try {
         Write-Host "GPO already exists: $GPOName"
     }
 
-    # Link the GPO to the domain root
-    New-GPLink -Name $GPOName -Target $domainDN -Enforced Yes
+    # Link GPO to the domain
+    New-GPLink -Name $GPOName -Target "DC=$($domainParts -join ',DC=')" -Enforced Yes
 
-    # Define password policy
-    $infContent = @"
+    # Define password policy as INF
+    $inf = @"
 [Unicode]
 Unicode=yes
 
@@ -55,16 +53,16 @@ LockoutDuration = 15
 
     # Save INF file
     $infPath = "$PSScriptRoot\PasswordPolicy.inf"
-    $infContent | Out-File -FilePath $infPath -Encoding ASCII -Force
+    $inf | Out-File -Encoding ASCII -FilePath $infPath -Force
 
-    # Locate GPT folder path
-    $gptFolder = "\\$domain\SYSVOL\$domain\Policies\{$($GPO.Id)}\MACHINE\Microsoft\Windows NT\SecEdit"
-    New-Item -ItemType Directory -Path $gptFolder -Force | Out-Null
-    Copy-Item -Path $infPath -Destination "$gptFolder\GptTmpl.inf" -Force
+    # Path to GPO’s GPTTMPL.inf file in SYSVOL
+    $gptPath = "\\$domain\SYSVOL\$domain\Policies\{$($GPO.Id)}\MACHINE\Microsoft\Windows NT\SecEdit"
+    New-Item -ItemType Directory -Path $gptPath -Force | Out-Null
+    Copy-Item -Path $infPath -Destination "$gptPath\GptTmpl.inf" -Force
 
-    Write-Host "Password policies applied to SYSVOL for the GPO."
+    Write-Host "Password policy written to SYSVOL GPTTMPL.inf"
 
-    # Force group policy update
+    # Force update
     gpupdate /force | Out-Null
     Write-Host "Group Policy updated."
 
