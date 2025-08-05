@@ -17,7 +17,7 @@ try {
     # Import GroupPolicy module
     Import-Module GroupPolicy -ErrorAction Stop
 
-    $GPOName = "CIS Benchmark - Password Policy-latest
+    $GPOName = "CIS Benchmark - Password Policy-latest"
 
     # Check if the GPO already exists
     $existingGPO = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
