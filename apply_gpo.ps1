@@ -1,10 +1,10 @@
-# Start transcript logging
+# Start logging
 Start-Transcript -Path "$PSScriptRoot\script_output.txt" -Append
 
 Write-Host "Starting GPO script..."
 Write-Host "Running as: $(whoami)"
 
-# Ensure script is running as administrator
+# Check admin
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
     Write-Error "This script must be run as Administrator."
@@ -13,12 +13,10 @@ if (-not $isAdmin) {
 }
 
 try {
-    # Load required module
     Import-Module GroupPolicy -ErrorAction Stop
+    Import-Module ActiveDirectory -ErrorAction Stop
 
     $GPOName = "CIS Benchmark - Password Policy-latest"
-    $domain = Get-ADDomain
-    $domainDN = $domain.DistinguishedName
     $GPO = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
 
     if (-not $GPO) {
@@ -28,16 +26,19 @@ try {
         Write-Host "GPO already exists: $GPOName"
     }
 
-    # Link GPO to domain if not already linked
-    $existingLinks = (Get-GPInheritance -Target $domain.DNSRoot).GpoLinks
-    if (-not ($existingLinks | Where-Object { $_.DisplayName -eq $GPOName })) {
-        New-GPLink -Name $GPOName -Target $domain.DistinguishedName -Enforced:$true
-        Write-Host "Linked GPO to domain."
+    # Link to domain only if not already linked
+    $domainDN = (Get-ADDomain).DistinguishedName
+    $existingLinks = (Get-GPInheritance -Target $domainDN).GpoLinks
+    $alreadyLinked = $existingLinks | Where-Object { $_.DisplayName -eq $GPOName }
+
+    if (-not $alreadyLinked) {
+        New-GPLink -Name $GPOName -Target $domainDN -LinkEnabled Yes -Enforced Yes
+        Write-Host "Linked GPO to domain: $domainDN"
     } else {
-        Write-Host "GPO already linked to domain."
+        Write-Host "GPO already linked to domain. Skipping link step."
     }
 
-    # Prepare SecEdit-compatible INF content
+    # Write password policy INF content
     $inf = @"
 [Unicode]
 Unicode=yes
@@ -53,17 +54,16 @@ ResetLockoutCount = 15
 LockoutDuration = 15
 "@
 
-    # Export INF
     $infPath = "$PSScriptRoot\PasswordPolicy.inf"
     $inf | Out-File -Encoding ASCII -FilePath $infPath -Force
 
-    # Copy INF to SYSVOL GPT location
-    $gptPath = "\\$($domain.DNSRoot)\SYSVOL\$($domain.DNSRoot)\Policies\{$($GPO.Id)}\MACHINE\Microsoft\Windows NT\SecEdit"
+    # Deploy INF to SYSVOL GPT path
+    $gptPath = "\\$env:USERDNSDOMAIN\SYSVOL\$env:USERDNSDOMAIN\Policies\{$($GPO.Id)}\MACHINE\Microsoft\Windows NT\SecEdit"
     New-Item -ItemType Directory -Path $gptPath -Force | Out-Null
     Copy-Item $infPath -Destination "$gptPath\GptTmpl.inf" -Force
-    Write-Host "INF copied to SYSVOL path."
 
-    # Update policies
+    Write-Host "Password policy INF deployed to GPO SYSVOL path."
+
     gpupdate /force | Out-Null
     Write-Host "Group Policy updated."
 
@@ -73,5 +73,5 @@ LockoutDuration = 15
     exit 1
 }
 
-Write-Host "CIS Benchmark GPO applied successfully."
+Write-Host "GPO applied successfully"
 Stop-Transcript
