@@ -20,7 +20,7 @@ Import-Module GroupPolicy -ErrorAction Stop
 Import-Module ActiveDirectory -ErrorAction Stop
 
 # Define GPO
-$GPOName = "CIS Benchmark - Password Policy-final"
+$GPOName = "CIS Benchmark - Password Policy-latest"
 
 # Check or create GPO
 $gpo = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
