@@ -1,0 +1,372 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20250817064220
+Username: MYDOMAIN\Administrator
+RunAs User: MYDOMAIN\Administrator
+Configuration Name: 
+Machine: WIN-SERVER (Microsoft Windows NT 10.0.17763.0)
+Host Application: powershell -ExecutionPolicy Bypass -File ./apply_gpo.ps1
+Process ID: 5308
+PSVersion: 5.1.17763.7553
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.17763.7553
+BuildVersion: 10.0.17763.7553
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is C:\terraform-gpo\apply_gpo_log.txt
+
+CIS GPO Automation Starting
+Running as: mydomain\administrator
+GPO already exists: CIS Benchmark - Password Policy-latest
+Get-GPLink : The term 'Get-GPLink' is not recognized as the name of a cmdlet, function, script file, or operable 
+program. Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At C:\terraform-gpo\apply_gpo.ps1:36 char:9
++ $link = Get-GPLink -Target $DomainDN | Where-Object { $_.GPOName -eq  ...
++         ~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (Get-GPLink:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+Get-GPLink : The term 'Get-GPLink' is not recognized as the name of a cmdlet, function, script file, or operable
+program. Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At C:\terraform-gpo\apply_gpo.ps1:36 char:9
++ $link = Get-GPLink -Target $DomainDN | Where-Object { $_.GPOName -eq  ...
++         ~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (Get-GPLink:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+
+New-GPLink : The GPO named 'CIS Benchmark - Password Policy-latest' is already linked to a Scope of Management with 
+Path 'DC=mydomain,DC=local'.
+At C:\terraform-gpo\apply_gpo.ps1:39 char:5
++     New-GPLink -Name $GPOName -Target $DomainDN -LinkEnabled Yes
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (Microsoft.Group...ewGPLinkCommand:NewGPLinkCommand) [New-GPLink], 
+ArgumentException
+    + FullyQualifiedErrorId : UnableToCreateNewLink,Microsoft.GroupPolicy.Commands.NewGPLinkCommand
+New-GPLink : The GPO named 'CIS Benchmark - Password Policy-latest' is already linked to a Scope of Management
+with Path 'DC=mydomain,DC=local'.
+At C:\terraform-gpo\apply_gpo.ps1:39 char:5
++     New-GPLink -Name $GPOName -Target $DomainDN -LinkEnabled Yes
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (Microsoft.Group...ewGPLinkCommand:NewGPLinkCommand) [New-GPLink],
+    ArgumentException
+    + FullyQualifiedErrorId : UnableToCreateNewLink,Microsoft.GroupPolicy.Commands.NewGPLinkCommand
+
+Linked GPO to domain: DC=mydomain,DC=local
+
+
+GpoId       : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName : CIS Benchmark - Password Policy-latest
+Enabled     : True
+Enforced    : False
+Target      : DC=mydomain,DC=local
+Order       : 1
+
+GPO link order set to 1
+Applying CIS password policies via registry values...
+
+Id               : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName      : CIS Benchmark - Password Policy-latest
+Path             : cn={EA440F42-08F6-4232-B072-F46E08F701C0},cn=policies,cn=system,DC=mydomain,DC=local
+Owner            : MYDOMAIN\Domain Admins
+DomainName       : mydomain.local
+CreationTime     : 8/5/2025 10:02:27 AM
+ModificationTime : 8/17/2025 6:42:30 AM
+User             : Microsoft.GroupPolicy.UserConfiguration
+Computer         : Microsoft.GroupPolicy.ComputerConfiguration
+GpoStatus        : AllSettingsEnabled
+WmiFilter        :
+Description      : CIS Benchmark compliance GPO
+
+
+Id               : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName      : CIS Benchmark - Password Policy-latest
+Path             : cn={EA440F42-08F6-4232-B072-F46E08F701C0},cn=policies,cn=system,DC=mydomain,DC=local
+Owner            : MYDOMAIN\Domain Admins
+DomainName       : mydomain.local
+CreationTime     : 8/5/2025 10:02:27 AM
+ModificationTime : 8/17/2025 6:42:30 AM
+User             : Microsoft.GroupPolicy.UserConfiguration
+Computer         : Microsoft.GroupPolicy.ComputerConfiguration
+GpoStatus        : AllSettingsEnabled
+WmiFilter        :
+Description      : CIS Benchmark compliance GPO
+
+
+Id               : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName      : CIS Benchmark - Password Policy-latest
+Path             : cn={EA440F42-08F6-4232-B072-F46E08F701C0},cn=policies,cn=system,DC=mydomain,DC=local
+Owner            : MYDOMAIN\Domain Admins
+DomainName       : mydomain.local
+CreationTime     : 8/5/2025 10:02:27 AM
+ModificationTime : 8/17/2025 6:42:30 AM
+User             : Microsoft.GroupPolicy.UserConfiguration
+Computer         : Microsoft.GroupPolicy.ComputerConfiguration
+GpoStatus        : AllSettingsEnabled
+WmiFilter        :
+Description      : CIS Benchmark compliance GPO
+
+
+Id               : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName      : CIS Benchmark - Password Policy-latest
+Path             : cn={EA440F42-08F6-4232-B072-F46E08F701C0},cn=policies,cn=system,DC=mydomain,DC=local
+Owner            : MYDOMAIN\Domain Admins
+DomainName       : mydomain.local
+CreationTime     : 8/5/2025 10:02:27 AM
+ModificationTime : 8/17/2025 6:42:30 AM
+User             : Microsoft.GroupPolicy.UserConfiguration
+Computer         : Microsoft.GroupPolicy.ComputerConfiguration
+GpoStatus        : AllSettingsEnabled
+WmiFilter        :
+Description      : CIS Benchmark compliance GPO
+
+
+Id               : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName      : CIS Benchmark - Password Policy-latest
+Path             : cn={EA440F42-08F6-4232-B072-F46E08F701C0},cn=policies,cn=system,DC=mydomain,DC=local
+Owner            : MYDOMAIN\Domain Admins
+DomainName       : mydomain.local
+CreationTime     : 8/5/2025 10:02:27 AM
+ModificationTime : 8/17/2025 6:42:30 AM
+User             : Microsoft.GroupPolicy.UserConfiguration
+Computer         : Microsoft.GroupPolicy.ComputerConfiguration
+GpoStatus        : AllSettingsEnabled
+WmiFilter        :
+Description      : CIS Benchmark compliance GPO
+
+
+Id               : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName      : CIS Benchmark - Password Policy-latest
+Path             : cn={EA440F42-08F6-4232-B072-F46E08F701C0},cn=policies,cn=system,DC=mydomain,DC=local
+Owner            : MYDOMAIN\Domain Admins
+DomainName       : mydomain.local
+CreationTime     : 8/5/2025 10:02:27 AM
+ModificationTime : 8/17/2025 6:42:30 AM
+User             : Microsoft.GroupPolicy.UserConfiguration
+Computer         : Microsoft.GroupPolicy.ComputerConfiguration
+GpoStatus        : AllSettingsEnabled
+WmiFilter        :
+Description      : CIS Benchmark compliance GPO
+
+
+Id               : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName      : CIS Benchmark - Password Policy-latest
+Path             : cn={EA440F42-08F6-4232-B072-F46E08F701C0},cn=policies,cn=system,DC=mydomain,DC=local
+Owner            : MYDOMAIN\Domain Admins
+DomainName       : mydomain.local
+CreationTime     : 8/5/2025 10:02:27 AM
+ModificationTime : 8/17/2025 6:42:30 AM
+User             : Microsoft.GroupPolicy.UserConfiguration
+Computer         : Microsoft.GroupPolicy.ComputerConfiguration
+GpoStatus        : AllSettingsEnabled
+WmiFilter        :
+Description      : CIS Benchmark compliance GPO
+
+
+Id               : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName      : CIS Benchmark - Password Policy-latest
+Path             : cn={EA440F42-08F6-4232-B072-F46E08F701C0},cn=policies,cn=system,DC=mydomain,DC=local
+Owner            : MYDOMAIN\Domain Admins
+DomainName       : mydomain.local
+CreationTime     : 8/5/2025 10:02:27 AM
+ModificationTime : 8/17/2025 6:42:30 AM
+User             : Microsoft.GroupPolicy.UserConfiguration
+Computer         : Microsoft.GroupPolicy.ComputerConfiguration
+GpoStatus        : AllSettingsEnabled
+WmiFilter        :
+Description      : CIS Benchmark compliance GPO
+
+CIS password and lockout policies successfully applied to GPO: CIS Benchmark - Password Policy-latest
+
+CIS GPO Automation Completed Successfully
+**********************
+Windows PowerShell transcript end
+End time: 20250817064243
+**********************
+**********************
+Windows PowerShell transcript start
+Start time: 20250817070439
+Username: MYDOMAIN\Administrator
+RunAs User: MYDOMAIN\Administrator
+Configuration Name: 
+Machine: WIN-SERVER (Microsoft Windows NT 10.0.17763.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+Process ID: 6800
+PSVersion: 5.1.17763.7553
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.17763.7553
+BuildVersion: 10.0.17763.7553
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is C:\terraform-gpo\apply_gpo_log.txt
+
+CIS GPO Automation Starting
+Running as: mydomain\administrator
+GPO already exists: CIS Benchmark - Password Policy-latest
+Get-GPLink : The term 'Get-GPLink' is not recognized as the name of a cmdlet, function, script file, or operable 
+program. Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At C:\terraform-gpo\apply_gpo.ps1:36 char:9
++ $link = Get-GPLink -Target $DomainDN | Where-Object { $_.GPOName -eq  ...
++         ~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (Get-GPLink:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+Get-GPLink : The term 'Get-GPLink' is not recognized as the name of a cmdlet, function, script file, or operable
+program. Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At C:\terraform-gpo\apply_gpo.ps1:36 char:9
++ $link = Get-GPLink -Target $DomainDN | Where-Object { $_.GPOName -eq  ...
++         ~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (Get-GPLink:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+
+New-GPLink : The GPO named 'CIS Benchmark - Password Policy-latest' is already linked to a Scope of Management with 
+Path 'DC=mydomain,DC=local'.
+At C:\terraform-gpo\apply_gpo.ps1:39 char:5
++     New-GPLink -Name $GPOName -Target $DomainDN -LinkEnabled Yes
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (Microsoft.Group...ewGPLinkCommand:NewGPLinkCommand) [New-GPLink], 
+ArgumentException
+    + FullyQualifiedErrorId : UnableToCreateNewLink,Microsoft.GroupPolicy.Commands.NewGPLinkCommand
+New-GPLink : The GPO named 'CIS Benchmark - Password Policy-latest' is already linked to a Scope of Management
+with Path 'DC=mydomain,DC=local'.
+At C:\terraform-gpo\apply_gpo.ps1:39 char:5
++     New-GPLink -Name $GPOName -Target $DomainDN -LinkEnabled Yes
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (Microsoft.Group...ewGPLinkCommand:NewGPLinkCommand) [New-GPLink],
+    ArgumentException
+    + FullyQualifiedErrorId : UnableToCreateNewLink,Microsoft.GroupPolicy.Commands.NewGPLinkCommand
+
+Linked GPO to domain: DC=mydomain,DC=local
+
+
+GpoId       : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName : CIS Benchmark - Password Policy-latest
+Enabled     : True
+Enforced    : False
+Target      : DC=mydomain,DC=local
+Order       : 1
+
+GPO link order set to 1
+Applying CIS password policies via registry values...
+
+Id               : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName      : CIS Benchmark - Password Policy-latest
+Path             : cn={EA440F42-08F6-4232-B072-F46E08F701C0},cn=policies,cn=system,DC=mydomain,DC=local
+Owner            : MYDOMAIN\Domain Admins
+DomainName       : mydomain.local
+CreationTime     : 8/5/2025 10:02:27 AM
+ModificationTime : 8/17/2025 7:04:40 AM
+User             : Microsoft.GroupPolicy.UserConfiguration
+Computer         : Microsoft.GroupPolicy.ComputerConfiguration
+GpoStatus        : AllSettingsEnabled
+WmiFilter        :
+Description      : CIS Benchmark compliance GPO
+
+
+Id               : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName      : CIS Benchmark - Password Policy-latest
+Path             : cn={EA440F42-08F6-4232-B072-F46E08F701C0},cn=policies,cn=system,DC=mydomain,DC=local
+Owner            : MYDOMAIN\Domain Admins
+DomainName       : mydomain.local
+CreationTime     : 8/5/2025 10:02:27 AM
+ModificationTime : 8/17/2025 7:04:40 AM
+User             : Microsoft.GroupPolicy.UserConfiguration
+Computer         : Microsoft.GroupPolicy.ComputerConfiguration
+GpoStatus        : AllSettingsEnabled
+WmiFilter        :
+Description      : CIS Benchmark compliance GPO
+
+
+Id               : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName      : CIS Benchmark - Password Policy-latest
+Path             : cn={EA440F42-08F6-4232-B072-F46E08F701C0},cn=policies,cn=system,DC=mydomain,DC=local
+Owner            : MYDOMAIN\Domain Admins
+DomainName       : mydomain.local
+CreationTime     : 8/5/2025 10:02:27 AM
+ModificationTime : 8/17/2025 7:04:40 AM
+User             : Microsoft.GroupPolicy.UserConfiguration
+Computer         : Microsoft.GroupPolicy.ComputerConfiguration
+GpoStatus        : AllSettingsEnabled
+WmiFilter        :
+Description      : CIS Benchmark compliance GPO
+
+
+Id               : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName      : CIS Benchmark - Password Policy-latest
+Path             : cn={EA440F42-08F6-4232-B072-F46E08F701C0},cn=policies,cn=system,DC=mydomain,DC=local
+Owner            : MYDOMAIN\Domain Admins
+DomainName       : mydomain.local
+CreationTime     : 8/5/2025 10:02:27 AM
+ModificationTime : 8/17/2025 7:04:40 AM
+User             : Microsoft.GroupPolicy.UserConfiguration
+Computer         : Microsoft.GroupPolicy.ComputerConfiguration
+GpoStatus        : AllSettingsEnabled
+WmiFilter        :
+Description      : CIS Benchmark compliance GPO
+
+
+Id               : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName      : CIS Benchmark - Password Policy-latest
+Path             : cn={EA440F42-08F6-4232-B072-F46E08F701C0},cn=policies,cn=system,DC=mydomain,DC=local
+Owner            : MYDOMAIN\Domain Admins
+DomainName       : mydomain.local
+CreationTime     : 8/5/2025 10:02:27 AM
+ModificationTime : 8/17/2025 7:04:40 AM
+User             : Microsoft.GroupPolicy.UserConfiguration
+Computer         : Microsoft.GroupPolicy.ComputerConfiguration
+GpoStatus        : AllSettingsEnabled
+WmiFilter        :
+Description      : CIS Benchmark compliance GPO
+
+
+Id               : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName      : CIS Benchmark - Password Policy-latest
+Path             : cn={EA440F42-08F6-4232-B072-F46E08F701C0},cn=policies,cn=system,DC=mydomain,DC=local
+Owner            : MYDOMAIN\Domain Admins
+DomainName       : mydomain.local
+CreationTime     : 8/5/2025 10:02:27 AM
+ModificationTime : 8/17/2025 7:04:40 AM
+User             : Microsoft.GroupPolicy.UserConfiguration
+Computer         : Microsoft.GroupPolicy.ComputerConfiguration
+GpoStatus        : AllSettingsEnabled
+WmiFilter        :
+Description      : CIS Benchmark compliance GPO
+
+
+Id               : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName      : CIS Benchmark - Password Policy-latest
+Path             : cn={EA440F42-08F6-4232-B072-F46E08F701C0},cn=policies,cn=system,DC=mydomain,DC=local
+Owner            : MYDOMAIN\Domain Admins
+DomainName       : mydomain.local
+CreationTime     : 8/5/2025 10:02:27 AM
+ModificationTime : 8/17/2025 7:04:40 AM
+User             : Microsoft.GroupPolicy.UserConfiguration
+Computer         : Microsoft.GroupPolicy.ComputerConfiguration
+GpoStatus        : AllSettingsEnabled
+WmiFilter        :
+Description      : CIS Benchmark compliance GPO
+
+
+Id               : ea440f42-08f6-4232-b072-f46e08f701c0
+DisplayName      : CIS Benchmark - Password Policy-latest
+Path             : cn={EA440F42-08F6-4232-B072-F46E08F701C0},cn=policies,cn=system,DC=mydomain,DC=local
+Owner            : MYDOMAIN\Domain Admins
+DomainName       : mydomain.local
+CreationTime     : 8/5/2025 10:02:27 AM
+ModificationTime : 8/17/2025 7:04:40 AM
+User             : Microsoft.GroupPolicy.UserConfiguration
+Computer         : Microsoft.GroupPolicy.ComputerConfiguration
+GpoStatus        : AllSettingsEnabled
+WmiFilter        :
+Description      : CIS Benchmark compliance GPO
+
+CIS password and lockout policies successfully applied to GPO: CIS Benchmark - Password Policy-latest
+
+CIS GPO Automation Completed Successfully
+**********************
+Windows PowerShell transcript end
+End time: 20250817070452
+**********************
