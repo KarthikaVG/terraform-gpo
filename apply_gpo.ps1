@@ -20,12 +20,12 @@ Import-Module GroupPolicy -ErrorAction Stop
 Import-Module ActiveDirectory -ErrorAction Stop
 
 # Define GPO
-$GPOName = "CIS Benchmark - Password Policy-newestofnewest"
+$GPOName = "CIS Benchmark - Password Policy-Demo"
 
 # Check or create GPO
 $gpo = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
 if (-not $gpo) {
-    $gpo = New-GPO -Name $GPOName -Comment "CIS Benchmark Password Policy"
+    $gpo = New-GPO -Name $GPOName -Comment "CIS Benchmark Password Policy for Demo"
     Write-Host "Created GPO: $GPOName"
 } else {
     Write-Host "GPO already exists: $GPOName"
