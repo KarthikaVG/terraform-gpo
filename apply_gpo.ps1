@@ -25,7 +25,7 @@ $GPOName = "CIS Benchmark - Password Policy-Demo"
 # Check or create GPO
 $gpo = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
 if (-not $gpo) {
-    $gpo = New-GPO -Name $GPOName -Comment "CIS Benchmark Password Policy for Demo"
+    $gpo = New-GPO -Name $GPOName -Comment "CIS Benchmark Password Policy for Demonstration"
     Write-Host "Created GPO: $GPOName"
 } else {
     Write-Host "GPO already exists: $GPOName"
